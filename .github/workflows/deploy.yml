@@ -15,9 +15,11 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
             toolchain: stable
-            default: true
+            override: true
             target: wasm32-unknown-unknown
-            components: rustfmt
+      - name: Configure Rust Toolchain PATH
+        run: |
+          echo "PATH=$PATH:$HOME/.cargo/bin" >> $GITHUB_ENV
       - name: Publish
         uses: cloudflare/wrangler-action@2.0.0
         with:
