@@ -1,6 +1,7 @@
 use serde::Serialize;
-use rss::Channel;
+use rss::{Channel};
 use worker::*;
+use futures::future::join_all;
 
 #[derive(Serialize)]
 struct Item {
@@ -17,14 +18,34 @@ async fn load_channel(url: &str) -> Result<Channel> {
     Channel::read_from(&bytes[..]).map_err( |e| worker::Error::RustError(e.to_string()))
 }
 
+fn convert_items(items: Vec<rss::Item>) -> Vec<Item> {
+    let mut convert_items = vec![];
+    for item in items {
+        convert_items.push(Item {
+            title: item.title,
+            link: item.link,
+            description: item.description,
+            pub_date: item.pub_date
+        })
+    }
+    convert_items
+}
+
+async fn collect_items(urls: &[&str]) -> Result<Vec<Item>> {
+    let channels = join_all(urls.iter().map(|url| load_channel(url))).await;
+    let items = channels
+        .into_iter()
+        .filter_map(|channel| channel.ok())
+        .flat_map(|channel| convert_items(channel.items))
+        .collect::<Vec<_>>();
+    Ok(items)
+}
+
 pub async fn handler(_: Request, _: RouteContext<()>) -> Result<Response> {
-   let channel: Channel = load_channel("https://blog.aotoki.me/index.xml").await?;
-   let items = channel.items.into_iter().map(|item| Item {
-     title: item.title,
-     link: item.link,
-     description: item.description,
-     pub_date: item.pub_date
-   }).collect::<Vec<_>>();
+   let items = collect_items(&[
+       "https://blog.aotoki.me/index.xml",
+       "https://vocus.cc/rss/user/5f494cdafd89780001b0be5e/article.xml"
+   ]).await?;
 
    Response::from_json(&items)
 }
