@@ -30,6 +30,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
     // Environment bindings like KV Stores, Durable Objects, Secrets, and Variables.
     router
         .get("/", handlers::version::handler)
+        .get_async("/feeds", handlers::feed::handler)
         .run(req, env)
         .await
 }
