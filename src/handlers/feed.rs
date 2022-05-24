@@ -12,7 +12,15 @@ struct Item {
 }
 
 async fn load_channel(url: &str) -> Result<Channel> {
-    let mut res = Fetch::Url(url.parse()?).send().await?;
+    let request = Request::new_with_init(url, &RequestInit {
+        cf: CfProperties {
+            cache_everything: Some(true),
+            cache_ttl: Some(3600),
+            ..CfProperties::default()
+        },
+        ..Default::default()
+    })?;
+    let mut res = Fetch::Request(request).send().await?;
     let bytes = res.bytes().await?;
 
     Channel::read_from(&bytes[..]).map_err( |e| worker::Error::RustError(e.to_string()))
